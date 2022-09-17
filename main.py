@@ -27,8 +27,9 @@ class Entries:
         self.parent_window = parent_window
 
     # adding of new entry (добавление нового текстового поля)
-    def add_entry(self):
+    def add_entry(self,i=""):
         new_entry = Entry(self.parent_window)
+        new_entry.insert(0,i)
         new_entry.icursor(0)
         new_entry.focus()
         new_entry.pack()
@@ -40,6 +41,8 @@ class Entries:
 
     def delete_entry(self):
         entry = self.parent_window.focus_get()
+        if entry not in self.entries_list:
+            return
         if (len(entry.get())>0):
             mw = ModalWindow(self.parent_window, title='Удаление непустой строки',labeltext='Вы точно хотите удалить непустую строку?')
             yes_b = Button(master=mw.top, text = 'Да', command=mw.yes)
@@ -48,6 +51,10 @@ class Entries:
             mw.add_button(no_b)
             fl = mw.res()
             if( fl == 0 ):
+                plot_button = self.parent_window.get_button_by_name('plot')
+                if plot_button:
+                    plot_button.pack_forget()
+                self.parent_window.add_button('plot', 'Plot', 'plot', hot_key='<Return>')
                 return()
         entry.forget()
         self.entries_list.remove(entry)
@@ -55,6 +62,11 @@ class Entries:
         if plot_button:
             plot_button.pack_forget()
         self.parent_window.add_button('plot', 'Plot', 'plot', hot_key='<Return>')
+        
+    def reset_list(self):
+        for entry in self.entries_list:
+            entry.pack_forget()
+        self.entries_list.clear()
 
 
 # class for plotting (класс для построения графиков)
@@ -119,15 +131,20 @@ class Commands:
     def load_state(self):
         file = filedialog.askopenfile(defaultextension=".json")
         if file == None:
-            return
+            return()
         funcs = json.load(file)
+        func = funcs["list_of_function"]
+        entries = self.parent_window.entries
+        entries.reset_list()
+        for i in func:
+            entries.add_entry(i)
         figs = self.parent_window.plotter.plot(funcs.get("list_of_function"))
-        self._state.list_of_function = figs
         self.__forget_canvas()
         self.__figure_canvas = FigureCanvasTkAgg(figs, self.parent_window)
         self.__forget_navigation()
         self.__navigation_toolbar = NavigationToolbar2Tk(self.__figure_canvas, self.parent_window)
         self.__figure_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
+        self.plot()
         return self
 
     def set_parent_window(self, parent_window):
